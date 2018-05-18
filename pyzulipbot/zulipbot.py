@@ -125,7 +125,9 @@ class ZulipBot(object):
                     if self.debug:
                         print("Message - " + text)
                     if message['type'] == "private":
-                        message["stream"] = message["sender_email"]
+                        message["stream"] = { "to": message["sender_email"] }
+                    else:
+                        message["stream"] = { "to": message["display_recipient"], "subject": message["subject"] }
                     if "**" + self.user['full_name'] + "**"  in text or message["type"] == 'private':
                         self.parse_message(message)
                 except Exception as e:
@@ -158,7 +160,7 @@ class ZulipBot(object):
 
         Args:
             handler (:class:`Handler`): Handler that needs to be triggered
-            channel (str): Stream of the message recieved
+            channel (dict): Stream of the message recieved
         """
         handler_reply = None
         if handler.run != None:
@@ -181,17 +183,24 @@ class ZulipBot(object):
             if self.debug:
                 print("Reply: " + str(channel) + "  - " + str(reply))
 
-            if "@" in channel:
+            if "@" in channel["to"]:
                 type = "private"
             else:
                 type= "stream"
 
-            print(reply)
-            self.client.send_message({
-                "type": str(type),
-                "to": str(channel),
-                "content": str(reply),
-            })
+            if type == "stream":
+                self.client.send_message({
+                    "type": str(type),
+                    "subject": str(channel["subject"]),
+                    "to": str(channel["to"]),
+                    "content": str(reply),
+                })
+            else:
+                self.client.send_message({
+                    "type": str(type),
+                    "to": str(channel["to"]),
+                    "content": str(reply),
+                })
             handler.reply = handler.org_reply
 
 
